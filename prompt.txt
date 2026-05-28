@@ -1,0 +1,55 @@
+1.
+meglévő adatbázis és python összekapcsolása
+
+2.
+kérek írj egy seed.sql fájlt erre az adatbázisra.
+*boardgamesDB.sql*
+
+3.
+Írj egy lekérdezést, ami egy partit listáz ki. Írja ki az összes meccs resultot pontszámokkal, helyezésekkel, játékosnevekkel és játéknevekkel, és készíts egy python programot, ami listázza is ezeket.
+
+4.
+ignoráld a kommenteket. Kérlek írj még felhasználókhoz több partit, partikhoz több meccset. Legalább x3 annyi adat legyen az adatbázisban. 
+
+5.
+Át akarom transzformálni a kódot konzolos alkalmazásról grafikusra.
+Ne egyszerre csináljuk, hanem kis lépeésekben. Először is csinálj egy grafikus felületet, amely egy bejelentkezés felület lesz. Felhasználónevet kérjen és jelszót. A két szövegdoboz alatt legyen 2 gomb: Bejelentkezés és regisztráció. Ha a bejelentkezésre nyom a felhasználó, és egyeznek a beírt adatok az egyik felhasználóéval az adatbázisban, írja ki hogy sikeres bejelentkezés. Ha nem egyezik, akkor írja ki hogy Helytelen felasználónév / jelszó. Ha a regisztációra nyom a felhasználó, és mind a kettő szöveg doboz ki van töltve és a felhasználónév még nem foglalt, mentse el az adatbázisba, és írja ki hogy Sikeres regisztráció!. Ha valamelyik szövegdoboz üres, írja ki hogy Adjon meg egy felhasználónevet, és jelszót. Ha a felhasználónév már foglalt, írja ki hogy A megadott felhasználónév már létezik. Ha a jelszó nem haladja meg a 8 karakter hosszúságot, írja ki hogy A jelszó min. 8 karakter hosszúságú legyen.
+kérlek írd le az egész kódot.
+
+6.
+nem "case sensitive" a jelszó. ezt kérek orvosold.
+
+7.
+Legyen az ablak és a tartalom x2 nagyobb.
+
+8.
+felhasználó és jelszó feliratok legyenek középre igazítva.
+
+9.
+szuper. A következő lépés egyszerű, de ha működik kielégítő lesz.
+Sikeres bejelentkezés esetén váltson át egy másik felületre, amely egyenlőre annyi lesz, hogy bal-felülre írja ki a felhasználó nevét, jobb felülre rakjon egy kijelentkezés gombot, amely visszavisz a bejelentkezés felületre.
+
+ -- *váltás claude-ra* --
+
+10.
+kiváló. A következő lépés nagyobb lesz: fent címként írja ki hogy Partik. Cím alatt jelenjen meg egy zöld "Új Parti" gomb. Erre a gombra rányomva jelenjen meg egy új felület. 
+Az új feület tetején "Új Parti készítése" cím legyen. Az oldal jobb felső sarkában legyen egy vissza-gomb amit megnyomva visszatér a felhasználó a főoldalra. Az oldal bal oldalán jelenjen meg egy szövegdoboz, amibe a játékos nevét kell beírnia a felhasználónak, illetve mellette mégegy szövegdoboz, amely 0-9-ig terjedő egész számot kaphat csak inputnak, alapértelmezeten 0. Így nézzen ki: Szorzó: x1.[input]. Alatta legyen egy plusz gomb, amit megnyomva lista szerűen megjelenik még egy ugyan ilyen játékos hozzáadási lehetőség, ezzel lejjebb ugrik a plusz gomb. szövegdoboz.
+A képernyő jobb oldalán legyen egy szövegdoboz, amelybe a parti nevét kell megadnia a felhasználónak, és alatta egy magasabb szövegdoboz, amiben a parti leírása adható meg.
+Kicsivel ez alatt legyen egy gomb, amiel véglegesíti a parti beállításait.
+a játékosok neve lehet üresen hagyva, ezeket ignorálja a program, de legalább egyben kell hogy legyen tartalom. Ha a szorzóhoz nem ír semmi, 0 lesz az értéke. Nem lehet 2 játékosnak ugyan az a neve. Ebben az esetben a véglegesítésre rányova hibaüzenetként íraj hogy nem lehet 2 játékosnak ugyan az a neve. Ha nincs legalább egy játékosnak tartalom a név mezőben, írjon hibaüzenetet.
+A parti nevéhez is muszáj írnia valamit, különben hibaüzenetet kap. A leírás nem kötelező megadni, tehát üresen hagyható.
+Ezt mind mentse az adatbázisban, a felhasználó id-jéhez. A partit a parties táblában a felhasználó id-jével, a játékosokat a players táblában a parti id-jével.
+itt egy röktönzött vázlat amit én készítettem paint-ben erről a felületről (nyilván ez csak egy kézzel rajzolt vázlat, arányokon és design-on váltztathatsz): 
+*ujparti_vazlat.png*
+
+11.
+Rendben. Az új parti készítés szegmens kész. 
+Vissza a főoldalra:
+kicsivel a plusz-gomb alatt kezdje el lista szerűen felsorolni a felhasználó id-jéhez tartzó partikat gombként 
+(3 oszlopban jelenjenek meg). Az elejére a még futó partik (kék hátérszín), a végére a már lezárt partikat 
+(szürke háttér) rakdja. Hogy mit csináljanak a gombok, majd a következő promptban részletezem.
+*fooldal_vazlat.png*
+
+12.
+Miután bejelentkeztem és véglegesítettem egy partit, a felhasználó "None" lesz a főoldalon. Kérlek orvosold.
+
