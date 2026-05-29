@@ -48,7 +48,7 @@ def handle_login():
         cursor = conn.cursor()
 
         # id-t is lekérjük, nem csak a létezést ellenőrizzük
-        query = "SELECT id FROM users WHERE username = %s AND BINARY password = %s"
+        query = "SELECT id FROM users WHERE BINARY username = %s AND BINARY password = %s"
         cursor.execute(query, (username, password))
         user = cursor.fetchone()
 
@@ -123,7 +123,7 @@ def show_dashboard(username):
     top_bar = tk.Frame(dashboard_frame)
     top_bar.pack(fill=tk.X, side=tk.TOP, pady=(0, 20))
 
-    tk.Label(top_bar, text=f"Felhasználó: {username}",
+    tk.Label(top_bar, text=f"{username}",
              font=("Arial", 16, "bold"), fg="#333333").pack(side=tk.LEFT)
     tk.Button(top_bar, text="Kijelentkezés", command=handle_logout,
               font=("Arial", 12, "bold"), bg="#f44336", fg="white", padx=10).pack(side=tk.RIGHT)
