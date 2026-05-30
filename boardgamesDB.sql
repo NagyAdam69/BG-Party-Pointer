@@ -9,17 +9,18 @@ USE boardgames_db;
 -- 1. Felhasználók táblája (A bejelentkezéshez és regisztrációhoz)
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
+    username VARCHAR(50) NOT NULL UNIQUE COLLATE utf8mb4_bin,
     password VARCHAR(255) NOT NULL
 );
 
--- 2. Partik / Csoportok táblája (Javítva: user_id és is_closed hozzáadva)
+-- 2. Partik / Csoportok táblája
 CREATE TABLE parties (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,                          -- Összekötés a users táblával
+    user_id INT NOT NULL,
     party_name VARCHAR(100) NOT NULL,
     is_closed TINYINT(1) NOT NULL DEFAULT 0,       -- 0: nyitott, 1: lezárt
     description TEXT NULL,                         -- Opcionális leírás
+    closed_date DATETIME NULL DEFAULT NULL,        -- Lezárás dátuma, alapértelmezetten NULL
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -30,7 +31,7 @@ CREATE TABLE players (
     player_name VARCHAR(100) NOT NULL,
     multiplier TINYINT NOT NULL DEFAULT 0,
     FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE CASCADE,
-    CONSTRAINT chk_multiplier CHECK (multiplier BETWEEN 0 AND 9) -- Garantálja a 0-9 tartományt
+    CONSTRAINT chk_multiplier CHECK (multiplier BETWEEN 0 AND 9)
 );
 
 -- 4. Meccsek táblája
@@ -38,7 +39,10 @@ CREATE TABLE matches (
     id INT AUTO_INCREMENT PRIMARY KEY,
     party_id INT NOT NULL,
     game_name VARCHAR(100) NOT NULL,
-    FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE CASCADE
+    date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Létrehozás dátuma és ideje
+    weighting SMALLINT UNSIGNED NOT NULL DEFAULT 100,  -- Súlyozás (0-1000), százalékként kezelve
+    FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE CASCADE,
+    CONSTRAINT chk_weighting CHECK (weighting BETWEEN 0 AND 1000)
 );
 
 -- 5. Meccsek eredményei tábla

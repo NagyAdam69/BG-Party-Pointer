@@ -53,3 +53,25 @@ kicsivel a plusz-gomb alatt kezdje el lista szerűen felsorolni a felhasználó 
 12.
 Miután bejelentkeztem és véglegesítettem egy partit, a felhasználó "None" lesz a főoldalon. Kérlek orvosold.
 
+13.
+frissítsük az adatbázist:
+
+a parties táblában egy új rekord legyen: a "closed_date", ami default NULL.
+
+a matches táblában 2 új rekord: "date", ami a létrehozás dátuma és pontos ideje legyen (timestamp); súlyozás rekord (weighting) (0-1000-ig terjedő egész szám), később százalékként lesz kezelve, alapértelmezetten 100.
+
+14.
+A következő lépés is komplikált lesz:
+ha a felhasználó egy partinak a dedikált gombjára nyom, akkor egy új felület jelenjen meg.
+bal fent írja ki a parti nevét, jobbra mellette legyen egy piros kuka ikon (a vázlaton a kuka felírat helyére egy kuka ikon jelenjen meg), amely megnyomásával törlődjön a parti (legyen egy ablak a megerősítéshez). Ettől jobbra egy "parti lezárása" gomb legyen, amellyel lezáródik a parti, és nem lehet több meccset hozzáadni (új meccs készítése később lesz részletezve [lezárt partinál ne jelenjen meg az "Új meccs" gomb], ehhez is legyen megerősítés), ha a meccs lezárt, a gomb helyén a lezárás dátuma jelenjen meg így: "Lezárva: (ekkor)". Ettől jobbra egy "vissza" gomb, amely vissza visz a főoldalra. A felület bal oldalán egy bajnoki pont összegző (az összes meccsből összeadott) ranglista jelenjen meg. Sorokban jelenjenek meg a játékosok. A nevük, az összes pontuk, mellettük kicsiben a szorzójuk (ha nem x1.0), és a rankjuk jelenjen meg. A felület jobb oldalán a parti meccseinek eredményeit jelenítse meg. Felül legyen egy "Új meccs" gomb, amely egyenlőre semmit sem csinál, majd később lesz részletezve a funkciója. A gomb alatt jelenjenek meg a meccsek külün-külön, táblázatos formában. A táblázat így épül föl: Középen fent a meccs játékának a neve, bal oldalán a meccs létrehozási dátuma és ideje, jobb oldalán meg a súlyozása százalékban.
+Ez mind a táblázat felső sora. A második sora a fejléc, amely sorba a játékosok nevét, a rankhoz elért győzelmi pontjait, helyezését, és a rankkal elért bajnoki pontjait jelenítse meg (az ábra ebben a szempontból hibás, mert nem számolja bele a játékos szorzóját [laci x1.5-ös szorzója - itt is jelenjen meg a hozzáadott pont mellett kicsiben a szorzó (ha nem x1.0)]).  A mellékelt vázlat nem arányos, a méretek és design változhat.
+
+15.
+A győzelmipontok és szorzók nem jelennek meg sem a ranglistán, sem a meccsek tábláiban. A bajnoki pontok meccseknél osztási képlete (játékosok száma n): {[(n - rank + 1) * 100] * (weithing / 100)} * (1 + multiplier  / 10). A ranglistán összeadja a játékosok összes győzelmi pontjait, amit a meccsekből nyertek, és ez alapján készít ranglistát. A meccs táblázatában a győzelmi pontok alapján ranksolorlja a játékosokat, ne a bajnoki pontok alapján, hiszen szorzó miatt lehet több mint az éppen a játékos előtte lévőnek.
+
+16.
+Jó lesz, csak van néhány kis, könnyen javítható hiba: A ranglistánál a győzelmi pontokat adtad össze, nem a bajnoki pontokat. A Ranglistánál a kis szorzó jelölőt inkább a rank után rakd (hogy ne csússzon el a rank, mégis így is egyértelmű lesz a felhasználónak). A meccs táblázatban a sorok töltsék ki a rendelkezésre álló helyet - pl. a név a záblázat bal oldalán, a bajnoki pontok pedig a jobb oldalán legyenek, sorkizárt módon, ill. a szorzó itt a bajnoki pont előtt legyen (csak akkor jelenjen meg, ha nem x1.0).
+
+17.
+majdnem jó. Nem egymás alatt vannak az adatok. a meccsek táblázatban a győzelmi pontok fixen a táblázat 1/3-ánál legyen, a helyezés pedig a 2/3-ánáll legyen. A táblázatban a szorzót inkább rakd a játékos neve mellé (után), és oldd meg hogy ez ne csúsztasson a soron.
+
