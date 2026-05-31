@@ -186,9 +186,9 @@ def _build_party_list(parent):
         row_i = idx // COLS
         col_i = idx % COLS
 
-        bg_color   = "#90CAF9" if not is_closed else "#BDBDBD"
+        bg_color    = "#90CAF9" if not is_closed else "#BDBDBD"
         hover_color = "#64B5F6" if not is_closed else "#9E9E9E"
-        fg_color   = "#1A237E" if not is_closed else "#424242"
+        fg_color    = "#1A237E" if not is_closed else "#424242"
 
         btn = tk.Button(
             grid_frame,
@@ -243,7 +243,7 @@ def show_party_detail(party_id):
 
         # Parti adatok
         cursor.execute(
-            "SELECT party_name, is_closed, closed_date FROM parties WHERE id = %s",
+            "SELECT party_name, is_closed, closed_date, description FROM parties WHERE id = %s",
             (party_id,)
         )
         party = cursor.fetchone()
@@ -252,7 +252,7 @@ def show_party_detail(party_id):
             party_detail_frame.destroy()
             show_dashboard(current_username_global)
             return
-        party_name, is_closed, closed_date = party
+        party_name, is_closed, closed_date, party_description = party
 
         # Játékosok (id, név, multiplier)
         cursor.execute(
@@ -261,28 +261,28 @@ def show_party_detail(party_id):
         )
         players = cursor.fetchall()  # [(id, name, multiplier), ...]
 
-        # Meccsek (id, game_name, date, weighting)
+        # Meccsek (id, game_name, date, weighting, win_con)
         cursor.execute(
-            "SELECT id, game_name, date, weighting FROM matches "
+            "SELECT id, game_name, date, weighting, win_con FROM matches "
             "WHERE party_id = %s ORDER BY date DESC",
             (party_id,)
         )
         matches = cursor.fetchall()
 
-        # Meccs eredmények: {match_id: [(player_id, rank, match_points), ...]}
-        # party_points-t NEM olvassuk - menet közben számoljuk a képlettel
+        # Meccs eredmények: {match_id: [(player_id, rank, match_points, sec_match_points), ...]}
         match_results = {}
         if matches:
             match_ids = [m[0] for m in matches]
             fmt = ",".join(["%s"] * len(match_ids))
             cursor.execute(
-                f"SELECT match_id, player_id, `rank`, match_points "
+                f"SELECT match_id, player_id, `rank`, match_points, sec_match_points "
                 f"FROM match_results WHERE match_id IN ({fmt}) ORDER BY match_id, match_points DESC",
                 match_ids
             )
             for row in cursor.fetchall():
                 mid = row[0]
                 match_results.setdefault(mid, []).append(row[1:])
+                # (player_id, rank, match_points, sec_match_points)
 
     except Error as e:
         messagebox.showerror("Adatbázis hiba", f"Hiba történt: {e}")
@@ -304,7 +304,7 @@ def show_party_detail(party_id):
     tk.Label(header, text=party_name,
              font=("Arial", 20, "bold"), fg="#1A237E").pack(side=tk.LEFT, padx=(0, 14))
 
-    # Kuka gomb (🗑 unicode ikon)
+    # Kuka gomb
     tk.Button(
         header, text="🗑", font=("Arial", 14), bg="#f44336", fg="white",
         relief="flat", padx=6, pady=2,
@@ -344,58 +344,91 @@ def show_party_detail(party_id):
 
     tk.Label(left, text="Ranglista:", font=("Arial", 13, "bold"), fg="#333333").pack(anchor="w", pady=(0, 6))
 
-    # match_id → weighting szótár
-    weighting_map = {m[0]: m[3] for m in matches}
-
     # Segédfüggvény: bajnoki pontok kiszámítása
-    # Képlet: [(n - rank + 1) * 100] * (weighting/100) * (1 + multiplier/10)
     def calc_party_points(n_players, rank, weighting, multiplier):
         base = (n_players - rank + 1) * 100
         return round(base * (weighting / 100) * (1 + multiplier / 10))
 
-    # Ranglista: összes bajnoki pont összege játékosonként (képlettel számolva)
-    totals = {}  # player_id → összes bajnoki pont
-    for (mid, game_name, mdate, weighting) in matches:
-        results = match_results.get(mid, [])
-        n = len(results)
-        for (pid, rank, mp) in results:
-            _, pmult = player_map.get(pid, ("?", 0))
-            pp = calc_party_points(n, rank, weighting, pmult)
-            totals[pid] = totals.get(pid, 0) + pp
+    # Ranglista konténer – törölhető és újraépíthető
+    ranglista_container = tk.Frame(left)
+    ranglista_container.pack(fill=tk.X)
 
-    # Rendezés bajnoki pontok szerint csökkenő
-    sorted_players = sorted(players, key=lambda p: totals.get(p[0], 0), reverse=True)
+    def refresh_ranglista():
+        for w in ranglista_container.winfo_children():
+            w.destroy()
 
-    # Fejléc sor
-    hdr = tk.Frame(left, bg="#388E3C")
-    hdr.pack(fill=tk.X)
-    for txt, w in [("név", 9), ("pont", 7), ("rank", 5)]:
-        tk.Label(hdr, text=txt, font=("Arial", 10, "bold"),
-                 fg="white", bg="#388E3C", width=w, anchor="w").pack(side=tk.LEFT, padx=2, pady=3)
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, weighting FROM matches WHERE party_id = %s", (party_id,))
+            fresh_matches = cursor.fetchall()
+            if fresh_matches:
+                mids = [m[0] for m in fresh_matches]
+                fmt = ",".join(["%s"] * len(mids))
+                cursor.execute(
+                    f"SELECT match_id, player_id, `rank`, match_points "
+                    f"FROM match_results WHERE match_id IN ({fmt})", mids
+                )
+                rows = cursor.fetchall()
+            else:
+                rows = []
+        except Error as e:
+            tk.Label(ranglista_container, text=f"Hiba: {e}",
+                     font=("Arial", 9), fg="red").pack()
+            return
+        finally:
+            if 'conn' in locals() and conn.is_connected():
+                cursor.close()
+                conn.close()
 
-    # Játékos sorok
-    for rank_i, (pid, pname, pmult) in enumerate(sorted_players, start=1):
-        pts = totals.get(pid, 0)
-        row_bg = "#F1F8E9" if rank_i % 2 == 0 else "#DCEDC8"
-        row = tk.Frame(left, bg=row_bg)
-        row.pack(fill=tk.X)
+        fresh_results = {}
+        for mid, pid, rank, mp in rows:
+            fresh_results.setdefault(mid, []).append((pid, rank, mp))
 
-        # Név
-        tk.Label(row, text=pname, font=("Arial", 10),
-                 bg=row_bg, width=9, anchor="w").pack(side=tk.LEFT, padx=2, pady=2)
+        totals = {}
+        w_map = {m[0]: m[1] for m in fresh_matches}
+        for mid, wt in w_map.items():
+            res = fresh_results.get(mid, [])
+            n = len(res)
+            for (pid, rank, mp) in res:
+                _, pmult = player_map.get(pid, ("?", 0))
+                pp = calc_party_points(n, rank, wt, pmult)
+                totals[pid] = totals.get(pid, 0) + pp
 
-        # Bajnoki pont összege
-        tk.Label(row, text=str(pts), font=("Arial", 10, "bold"),
-                 bg=row_bg, anchor="w", width=7).pack(side=tk.LEFT)
+        sorted_pl = sorted(players, key=lambda p: totals.get(p[0], 0), reverse=True)
 
-        # Rank
-        tk.Label(row, text=str(rank_i), font=("Arial", 10, "bold"),
-                 fg="#1B5E20", bg=row_bg, width=4, anchor="w").pack(side=tk.LEFT, padx=2)
+        hdr = tk.Frame(ranglista_container, bg="#388E3C")
+        hdr.pack(fill=tk.X)
+        for txt, w in [("név", 9), ("pont", 7), ("rank", 5)]:
+            tk.Label(hdr, text=txt, font=("Arial", 10, "bold"),
+                     fg="white", bg="#388E3C", width=w, anchor="w").pack(side=tk.LEFT, padx=2, pady=3)
 
-        # Szorzó a rank után (ha nem x1.0)
-        if pmult != 0:
-            tk.Label(row, text=f"(x1.{pmult})", font=("Arial", 7),
-                     fg="#555555", bg=row_bg).pack(side=tk.LEFT)
+        for rank_i, (pid, pname, pmult) in enumerate(sorted_pl, start=1):
+            pts = totals.get(pid, 0)
+            row_bg = "#F1F8E9" if rank_i % 2 == 0 else "#DCEDC8"
+            row = tk.Frame(ranglista_container, bg=row_bg)
+            row.pack(fill=tk.X)
+            tk.Label(row, text=pname, font=("Arial", 10),
+                     bg=row_bg, width=9, anchor="w").pack(side=tk.LEFT, padx=2, pady=2)
+            tk.Label(row, text=str(pts), font=("Arial", 10, "bold"),
+                     bg=row_bg, anchor="w", width=7).pack(side=tk.LEFT)
+            tk.Label(row, text=str(rank_i), font=("Arial", 10, "bold"),
+                     fg="#1B5E20", bg=row_bg, width=4, anchor="w").pack(side=tk.LEFT, padx=2)
+            if pmult != 0:
+                tk.Label(row, text=f"(x1.{pmult})", font=("Arial", 7),
+                         fg="#555555", bg=row_bg).pack(side=tk.LEFT)
+
+    refresh_ranglista()
+
+    # Leírás doboz (ha van)
+    if party_description:
+        tk.Label(left, text="Leírás:", font=("Arial", 10, "bold"),
+                 fg="#555555").pack(anchor="w", pady=(12, 2))
+        desc_box = tk.Frame(left, bg="#E8F5E9", relief="solid", bd=1)
+        desc_box.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(desc_box, text=party_description, font=("Arial", 10),
+                 bg="#E8F5E9", fg="#2E2E2E", wraplength=180,
+                 justify="left", anchor="nw", padx=8, pady=6).pack(fill=tk.X)
 
     # Elválasztó
     tk.Frame(content, width=2, bg="#CCCCCC").pack(side=tk.LEFT, fill=tk.Y, padx=10)
@@ -410,13 +443,25 @@ def show_party_detail(party_id):
 
     tk.Label(matches_header, text="Meccsek:", font=("Arial", 13, "bold"), fg="#333333").pack(side=tk.LEFT)
 
+    new_match_btn_ref = [None]
+    new_match_form_ref = [None]
+
+    def show_new_match_form():
+        if new_match_btn_ref[0]:
+            new_match_btn_ref[0].pack_forget()
+        _build_new_match_form(mc_inner, mc_canvas, players, party_id, is_closed,
+                              new_match_btn_ref, new_match_form_ref,
+                              player_map, calc_party_points, refresh_ranglista)
+
     if not is_closed:
-        tk.Button(
+        btn = tk.Button(
             matches_header, text="Új meccs",
             font=("Arial", 11, "bold"), bg="#FF8C00", fg="white",
             padx=12, pady=3,
-            command=lambda: None  # később lesz bekötve
-        ).pack(side=tk.LEFT, padx=(12, 0))
+            command=show_new_match_form
+        )
+        btn.pack(side=tk.LEFT, padx=(12, 0))
+        new_match_btn_ref[0] = btn
 
     # Görgethető meccs lista
     mc_container = tk.Frame(right_outer)
@@ -442,12 +487,15 @@ def show_party_detail(party_id):
         tk.Label(mc_inner, text="Még nincs egyetlen meccs sem ebben a partiban.",
                  font=("Arial", 11, "italic"), fg="#888888").pack(pady=20)
     else:
-        for (mid, game_name, mdate, weighting) in matches:
-            _build_match_card(mc_inner, mid, game_name, mdate, weighting,
-                              match_results.get(mid, []), player_map, calc_party_points)
+        for (mid, game_name, mdate, weighting, win_con) in matches:
+            _build_match_card(mc_inner, mid, game_name, mdate, weighting, win_con,
+                              match_results.get(mid, []), player_map, calc_party_points,
+                              party_id, is_closed)
 
 
-def _build_match_card(parent, mid, game_name, mdate, weighting, results, player_map, calc_party_points):
+def _build_match_card(parent, mid, game_name, mdate, weighting, win_con, results,
+                      player_map, calc_party_points, party_id, is_closed,
+                      before_widget=None):
     """Egy meccs kártyát épít fel a meccs listában."""
     GOLD      = "#FFC107"
     GOLD_HDR  = "#FF8F00"
@@ -456,15 +504,29 @@ def _build_match_card(parent, mid, game_name, mdate, weighting, results, player_
 
     n_players = len(results)
 
-    # Sorok rendezése match_points szerint csökkenő (már az SQL is így adja, de biztosra)
-    sorted_results = sorted(results, key=lambda r: r[2], reverse=True)
+    # Rendezés helyezés szerint növekvő (1. hely elöl)
+    sorted_results = sorted(results, key=lambda r: r[1])
+
+    # Ha before_widget meg van adva, az új kártya a lista elejére kerül
+    pack_kwargs = dict(fill=tk.X, padx=4, pady=6)
+    if before_widget is not None:
+        pack_kwargs["before"] = before_widget
 
     card = tk.Frame(parent, relief="ridge", bd=2, bg=GOLD, padx=4, pady=4)
-    card.pack(fill=tk.X, padx=4, pady=6)
+    card.pack(**pack_kwargs)
 
-    # --- Felső sor: dátum | játék neve | súlyozás ---
+    # --- Felső sor: dátum | játék neve | súlyozás | X törlés ---
     top_row = tk.Frame(card, bg=GOLD)
     top_row.pack(fill=tk.X)
+
+    # X gomb – csak nyitott partinál
+    if not is_closed:
+        tk.Button(
+            top_row, text="✕", font=("Arial", 10, "bold"),
+            bg="#e53935", fg="white", relief="flat",
+            padx=4, pady=0, cursor="hand2",
+            command=lambda m=mid, g=game_name: _confirm_delete_match(m, g, parent, party_id)
+        ).pack(side=tk.RIGHT, padx=(4, 2), pady=2)
 
     date_str = mdate.strftime("%Y-%m-%d  %H:%M") if mdate else "–"
     tk.Label(top_row, text=date_str, font=("Arial", 9),
@@ -473,35 +535,36 @@ def _build_match_card(parent, mid, game_name, mdate, weighting, results, player_
     tk.Label(top_row, text=game_name, font=("Arial", 13, "bold"),
              bg=GOLD, fg="#1A237E", anchor="center").pack(side=tk.LEFT, expand=True)
 
-    tk.Label(top_row, text=f"súlyozás: {weighting}%", font=("Arial", 9),
-             bg=GOLD, fg="#4E342E", anchor="e").pack(side=tk.RIGHT, padx=4)
+    weight_label = f"súlyozás: {weighting}%"
+    if win_con == "min":
+        weight_label += "  |  ↓ kevesebb pont nyer"
+    tk.Label(top_row, text=weight_label,
+             font=("Arial", 9), bg=GOLD, fg="#4E342E", anchor="e").pack(side=tk.RIGHT, padx=4)
 
-    # --- Közös grid frame az összes sorhoz (fejléc + adatsorok) ---
-    # Így az oszlopok ténylegesen szinkronban vannak minden sorban.
-    # Elrendezés: col0=név (bal, flex), col1=győzelmi pontok (1/3-nál), 
-    #             col2=helyezés (2/3-nál), col3=bajnoki pontok (jobb)
+    # --- Táblázat ---
+    # col0=név, col1=győzelmi pontok (+ másodlagos), col2=helyezés, col3=bajnoki pontok
     table_frame = tk.Frame(card, bg=card.cget("bg"))
     table_frame.pack(fill=tk.X, pady=(4, 0))
-    table_frame.columnconfigure(0, weight=3)   # név oszlop nyúlik
-    table_frame.columnconfigure(1, weight=0, minsize=110)  # győzelmi pontok – fix 1/3 pozíció
-    table_frame.columnconfigure(2, weight=0, minsize=90)   # helyezés – fix 2/3 pozíció
-    table_frame.columnconfigure(3, weight=2)   # bajnoki pontok jobbra
+    table_frame.columnconfigure(0, weight=3)
+    table_frame.columnconfigure(1, weight=0, minsize=130)  # győzelmi pontok – kicsit szélesebb a sec miatt
+    table_frame.columnconfigure(2, weight=0, minsize=90)
+    table_frame.columnconfigure(3, weight=2)
 
-    # Fejléc sor (row 0)
-    hdr_cols = [("név", "w"), ("győzelmi pontok", "center"), ("helyezés", "center"), ("bajnoki pontok", "e")]
+    # Fejléc sor
+    hdr_cols = [("név", "w"), ("győzelmi pontok", "w"), ("helyezés", "center"), ("bajnoki pontok", "e")]
     for col_i, (txt, anch) in enumerate(hdr_cols):
         tk.Label(table_frame, text=txt, font=("Arial", 9, "bold"),
                  bg=GOLD_HDR, fg="white", anchor=anch, padx=6).grid(
                  row=0, column=col_i, sticky="ew", pady=3)
 
-    # --- Játékos sorok ---
-    for i, (pid, rank, match_points) in enumerate(sorted_results):
+    # Játékos sorok
+    for i, (pid, rank, match_points, sec_points) in enumerate(sorted_results):
         pname, pmult = player_map.get(pid, ("?", 0))
         party_points = calc_party_points(n_players, rank, weighting, pmult)
         row_bg = ROW_A if i % 2 == 0 else ROW_B
-        grid_row = i + 1  # fejléc a 0. sorban van
+        grid_row = i + 1
 
-        # Név + szorzó (ha nem x1.0) – fix szélességű névoszlopon belül
+        # Név + szorzó
         name_cell = tk.Frame(table_frame, bg=row_bg)
         name_cell.grid(row=grid_row, column=0, sticky="ew", pady=1)
         tk.Label(name_cell, text=pname, font=("Arial", 10),
@@ -510,19 +573,490 @@ def _build_match_card(parent, mid, game_name, mdate, weighting, results, player_
             tk.Label(name_cell, text=f"(x1.{pmult})", font=("Arial", 7),
                      fg="#555555", bg=row_bg).pack(side=tk.LEFT)
 
-        # Győzelmi pontok (1/3 pozíció, középre)
-        tk.Label(table_frame, text=str(match_points), font=("Arial", 10),
-                 bg=row_bg, anchor="center").grid(row=grid_row, column=1, sticky="ew")
+        # Győzelmi pontok + opcionális másodlagos pont
+        pts_cell = tk.Frame(table_frame, bg=row_bg)
+        pts_cell.grid(row=grid_row, column=1, sticky="ew", pady=1)
+        tk.Label(pts_cell, text=str(match_points), font=("Arial", 10),
+                 bg=row_bg, anchor="e").pack(side=tk.LEFT, padx=(6, 1))
+        if sec_points is not None:
+            tk.Label(pts_cell, text=f"({sec_points})", font=("Arial", 7),
+                     fg="#777777", bg=row_bg).pack(side=tk.LEFT, padx=(0, 4))
 
-        # Helyezés (2/3 pozíció, középre)
+        # Helyezés
         rank_colors = {1: "#B8860B", 2: "#808080", 3: "#8B4513"}
         rank_fg = rank_colors.get(rank, "#333333")
         tk.Label(table_frame, text=str(rank), font=("Arial", 10, "bold"),
                  fg=rank_fg, bg=row_bg, anchor="center").grid(row=grid_row, column=2, sticky="ew")
 
-        # Bajnoki pontok (jobb oldal)
+        # Bajnoki pontok
         tk.Label(table_frame, text=f"+{party_points}", font=("Arial", 10, "bold"),
                  fg="#1B5E20", bg=row_bg, anchor="e", padx=6).grid(row=grid_row, column=3, sticky="ew")
+
+    return card
+
+
+def _build_new_match_form(mc_inner, mc_canvas, players, party_id, is_closed,
+                          new_match_btn_ref, new_match_form_ref,
+                          player_map, calc_party_points, refresh_ranglista):
+    """Új meccs rögzítő form, a meccs lista tetején jelenik meg."""
+
+    GREEN   = "#4CAF50"
+    RED_BTN = "#f44336"
+    GOLD    = "#FFC107"
+    GOLD_HDR = "#FF8F00"
+    ROW_A   = "#FFF8E1"
+    ROW_B   = "#FFECB3"
+
+    # Meglévő kártyák elmentése a forma létrehozása előtt
+    existing = mc_inner.winfo_children()[:]
+
+    form = tk.Frame(mc_inner, relief="ridge", bd=2, bg=GOLD, padx=4, pady=4)
+    form.pack(fill=tk.X, padx=4, pady=6)
+    # Form mozgatása a lista elejére: form elöl, utána a többi
+    for child in existing:
+        child.pack_forget()
+        child.pack(fill=tk.X, padx=4, pady=6)
+
+    new_match_form_ref[0] = form
+
+    def destroy_form():
+        form.destroy()
+        new_match_form_ref[0] = None
+        if new_match_btn_ref[0]:
+            new_match_btn_ref[0].pack(side=tk.LEFT, padx=(12, 0))
+
+    # Fejléc
+    tk.Label(form, text="Új meccs:", font=("Arial", 11, "bold"),
+             bg=GOLD, fg="#1A237E").pack(anchor="w", padx=4, pady=(2, 4))
+
+    # 1. sor: Cím + Súlyozás
+    row1 = tk.Frame(form, bg=GOLD)
+    row1.pack(fill=tk.X, padx=2, pady=(0, 4))
+
+    tk.Label(row1, text="Cím:", font=("Arial", 10, "bold"), bg=GOLD).pack(side=tk.LEFT, padx=(4, 2))
+    title_var = tk.StringVar()
+    tk.Entry(row1, textvariable=title_var, font=("Arial", 10),
+             bg="#FFFDE7", relief="solid", bd=1, width=22).pack(side=tk.LEFT, padx=(0, 12))
+
+    tk.Label(row1, text="súlyozás:", font=("Arial", 10, "bold"), bg=GOLD).pack(side=tk.LEFT, padx=(0, 2))
+    weight_var = tk.StringVar(value="100")
+    tk.Spinbox(row1, from_=0, to=1000, increment=10,
+               textvariable=weight_var, font=("Arial", 10),
+               width=5, relief="solid", bd=1).pack(side=tk.LEFT, padx=(0, 2))
+    tk.Label(row1, text="%", font=("Arial", 10, "bold"), bg=GOLD).pack(side=tk.LEFT)
+
+    # Táblázat fejléc
+    tbl = tk.Frame(form, bg=GOLD_HDR)
+    tbl.pack(fill=tk.X, pady=(4, 0))
+    tbl.columnconfigure(0, weight=3)
+    tbl.columnconfigure(1, weight=2)
+    tbl.columnconfigure(2, weight=3)
+
+    for col_i, (txt, anch) in enumerate([("név", "w"), ("játszott?", "center"), ("győzelmi pontok", "center")]):
+        tk.Label(tbl, text=txt, font=("Arial", 9, "bold"),
+                 bg=GOLD_HDR, fg="white", anchor=anch, padx=6).grid(
+                 row=0, column=col_i, sticky="ew", pady=3)
+
+    # Játékos sorok
+    played_vars = {}
+    points_vars = {}
+
+    for i, (pid, pname, pmult) in enumerate(players):
+        row_bg = ROW_A if i % 2 == 0 else ROW_B
+        played_var = tk.BooleanVar(value=True)
+        points_var = tk.StringVar()
+        played_vars[pid] = played_var
+        points_vars[pid] = points_var
+
+        tk.Label(tbl, text=pname, font=("Arial", 10),
+                 bg=row_bg, anchor="w", padx=6).grid(row=i+1, column=0, sticky="ew", pady=1)
+
+        cb = tk.Checkbutton(tbl, variable=played_var,
+                            bg=row_bg, activebackground=row_bg,
+                            relief="flat", cursor="hand2")
+        cb.grid(row=i+1, column=1, sticky="ew")
+
+        tk.Entry(tbl, textvariable=points_var, font=("Arial", 10),
+                 bg="#FFFDE7", relief="solid", bd=1,
+                 justify="center").grid(row=i+1, column=2, sticky="ew", padx=4, pady=1)
+
+    # Győztes sor
+    win_row = tk.Frame(form, bg="#FFA000")
+    win_row.pack(fill=tk.X, pady=(6, 0))
+
+    tk.Label(win_row, text="Győztes:", font=("Arial", 10, "bold"),
+             bg="#FFA000", fg="white").pack(side=tk.LEFT, padx=(8, 6))
+    win_con_var = tk.StringVar(value="legtöbb")
+    win_con_menu = tk.OptionMenu(win_row, win_con_var, "legtöbb", "legkevesebb")
+    win_con_menu.config(font=("Arial", 10), bg="#FFFDE7", relief="solid")
+    win_con_menu.pack(side=tk.LEFT)
+
+    # Gombok
+    btn_row = tk.Frame(form, bg=GOLD)
+    btn_row.pack(fill=tk.X, pady=(8, 4))
+
+    tk.Button(btn_row, text="Kész", font=("Arial", 11, "bold"),
+              bg=GREEN, fg="white", padx=20, pady=4,
+              command=lambda: _handle_save_match(
+                  title_var, weight_var, played_vars, points_vars, win_con_var,
+                  players, party_id, player_map, calc_party_points,
+                  form, new_match_btn_ref, new_match_form_ref, mc_inner, mc_canvas,
+                  refresh_ranglista
+              )).pack(side=tk.LEFT, padx=(8, 6))
+
+    tk.Button(btn_row, text="Mégse", font=("Arial", 11, "bold"),
+              bg=RED_BTN, fg="white", padx=20, pady=4,
+              command=destroy_form).pack(side=tk.LEFT)
+
+    form.update_idletasks()
+    mc_canvas.configure(scrollregion=mc_canvas.bbox("all"))
+
+
+def _handle_save_match(title_var, weight_var, played_vars, points_vars, win_con_var,
+                       players, party_id, player_map, calc_party_points,
+                       form, new_match_btn_ref, new_match_form_ref, mc_inner, mc_canvas,
+                       refresh_ranglista):
+    """Validálja és menti az új meccset."""
+
+    # Validáció: Cím
+    title = title_var.get().strip()
+    if not title:
+        messagebox.showwarning("Hiányzó adat", "Kérlek add meg a meccs címét!")
+        return
+
+    # Validáció: Súlyozás
+    weight_str = weight_var.get().strip()
+    try:
+        weight = int(weight_str)
+        if weight % 10 != 0:
+            raise ValueError
+        if not (0 <= weight <= 1000):
+            raise ValueError
+    except ValueError:
+        messagebox.showwarning("Hibás súlyozás",
+            "A súlyozás csak 10-zel osztható egész szám lehet (0–1000).\n"
+            "Az egyszerűség kedvéért kérlek kerekítsd a legközelebbi tízes értékre!")
+        return
+
+    # Aktív játékosok összegyűjtése
+    active = []
+    for pid, pname, pmult in players:
+        if played_vars[pid].get():
+            active.append((pid, pname, pmult, points_vars[pid].get().strip()))
+
+    if len(active) < 1:
+        messagebox.showwarning("Hiányzó adat", "Legalább egy játékosnak játszania kell!")
+        return
+
+    # Validáció: Pontok
+    for pid, pname, pmult, pts_str in active:
+        if pts_str == "":
+            messagebox.showwarning("Hiányzó pont",
+                f"'{pname}' játékos részt vett, de nem adtál meg győzelmi pontot!")
+            return
+        try:
+            int(pts_str)
+        except ValueError:
+            messagebox.showwarning("Hibás pont",
+                f"'{pname}' győzelmi pontja csak egész szám lehet!")
+            return
+
+    active_pts = [(pid, pname, pmult, int(pts_str)) for pid, pname, pmult, pts_str in active]
+
+    win_con_raw = win_con_var.get()
+    win_con_db = "max" if win_con_raw == "legtöbb" else "min"
+    reverse_sort = (win_con_db == "max")
+
+    active_pts.sort(key=lambda x: x[3], reverse=reverse_sort)
+
+    # Döntetlen ellenőrzés
+    tied_result = _check_and_resolve_ties(active_pts, reverse_sort)
+    if tied_result is None:
+        return
+    active_pts = tied_result
+
+    # Helyezések kiosztása
+    ranked = _assign_ranks(active_pts, reverse=reverse_sort)
+
+    unique_ranks = sorted(set(r[5] for r in ranked))
+    n_effective = len(unique_ranks)
+
+    # Mentés adatbázisba
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO matches (party_id, game_name, weighting, win_con) VALUES (%s, %s, %s, %s)",
+            (party_id, title, weight, win_con_db)
+        )
+        match_id = cursor.lastrowid
+
+        for pid, pname, pmult, match_pts, sec_pts, rank in ranked:
+            party_pts = calc_party_points(n_effective, rank, weight, pmult)
+            cursor.execute(
+                "INSERT INTO match_results (match_id, player_id, `rank`, match_points, sec_match_points, party_points) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (match_id, pid, rank, match_pts, sec_pts, party_pts)
+            )
+
+        conn.commit()
+    except Error as e:
+        messagebox.showerror("Adatbázis hiba", f"Hiba történt: {e}")
+        return
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+    # Form eltüntetése, gomb visszahozása
+    form.destroy()
+    new_match_form_ref[0] = None
+    if new_match_btn_ref[0]:
+        new_match_btn_ref[0].pack(side=tk.LEFT, padx=(12, 0))
+
+    # Új meccs kártya megjelenítése a lista TETEJÉN
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, game_name, date, weighting, win_con FROM matches WHERE id = %s",
+            (match_id,)
+        )
+        new_match = cursor.fetchone()
+        cursor.execute(
+            "SELECT player_id, `rank`, match_points, sec_match_points "
+            "FROM match_results WHERE match_id = %s ORDER BY match_points DESC",
+            (match_id,)
+        )
+        new_results = cursor.fetchall()
+        # → [(player_id, rank, match_points, sec_match_points), ...]
+    except Error as e:
+        messagebox.showerror("Adatbázis hiba", f"Meccs betöltése sikertelen: {e}")
+        return
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+    mid, gname, mdate, mweight, mwin_con = new_match
+
+    # Összes meglévő kártya törlése és újraépítése az új meccsel elöl
+    for child in mc_inner.winfo_children():
+        child.destroy()
+
+    # Új meccs kártya elsőnek
+    _build_match_card(mc_inner, mid, gname, mdate, mweight, mwin_con,
+                      new_results, player_map, calc_party_points, party_id,
+                      is_closed=False)
+
+    # Többi meccs lekérése és megjelenítése sorban
+    try:
+        conn2 = get_db_connection()
+        cursor2 = conn2.cursor()
+        cursor2.execute(
+            "SELECT id, game_name, date, weighting, win_con FROM matches "
+            "WHERE party_id = %s AND id != %s ORDER BY date DESC",
+            (party_id, match_id)
+        )
+        rest_matches = cursor2.fetchall()
+        rest_results = {}
+        if rest_matches:
+            rest_ids = [m[0] for m in rest_matches]
+            fmt2 = ",".join(["%s"] * len(rest_ids))
+            cursor2.execute(
+                f"SELECT match_id, player_id, `rank`, match_points, sec_match_points "
+                f"FROM match_results WHERE match_id IN ({fmt2})",
+                rest_ids
+            )
+            for row in cursor2.fetchall():
+                rest_results.setdefault(row[0], []).append(row[1:])
+    except Error as e:
+        messagebox.showerror("Adatbázis hiba", f"Meccsek betöltése sikertelen: {e}")
+        rest_matches = []
+    finally:
+        if 'conn2' in locals() and conn2.is_connected():
+            cursor2.close()
+            conn2.close()
+
+    for (rmid, rgname, rmdate, rmweight, rmwin_con) in rest_matches:
+        _build_match_card(mc_inner, rmid, rgname, rmdate, rmweight, rmwin_con,
+                          rest_results.get(rmid, []), player_map, calc_party_points,
+                          party_id, is_closed=False)
+
+    refresh_ranglista()
+    mc_canvas.configure(scrollregion=mc_canvas.bbox("all"))
+
+
+def _check_and_resolve_ties(active_pts, reverse_sort):
+    """
+    Ellenőrzi van-e döntetlen a fő pontokban.
+    Ha igen, felugró ablakban kéri a másodlagos pontokat.
+    Visszatér a (pid, pname, pmult, match_pts, sec_pts) listával, vagy None ha megszakítva.
+    """
+    from collections import defaultdict
+
+    groups = defaultdict(list)
+    for pid, pname, pmult, pts in active_pts:
+        groups[pts].append((pid, pname, pmult, pts))
+
+    tied_groups = {pts: members for pts, members in groups.items() if len(members) > 1}
+
+    if not tied_groups:
+        return [(pid, pname, pmult, pts, None) for pid, pname, pmult, pts in active_pts]
+
+    dialog = tk.Toplevel(root)
+    dialog.title("Döntetlen törés")
+    dialog.grab_set()
+    dialog.resizable(False, False)
+
+    tk.Label(dialog, text="Döntetlen pontállás!",
+             font=("Arial", 13, "bold"), fg="#B71C1C").pack(padx=20, pady=(14, 4))
+    tk.Label(dialog,
+             text="Az alábbi játékosoknak egyenlő a pontjuk.\n"
+                  "Adj meg másodlagos pontokat a döntetlen töréshez.\n"
+                  "Ha üresen hagyod, abszolút döntetlen lesz (azonos helyezés).\n"
+                  "A döntetlen törésben mindig a TÖBB másodlagos pont nyer.",
+             font=("Arial", 9), fg="#555555", justify="left").pack(padx=20, pady=(0, 10))
+
+    sec_vars = {}
+
+    for pts_val, members in sorted(tied_groups.items(), reverse=reverse_sort):
+        grp_frame = tk.LabelFrame(dialog, text=f"Döntetlen: {pts_val} pont",
+                                  font=("Arial", 9, "bold"), fg="#E65100",
+                                  padx=8, pady=6)
+        grp_frame.pack(fill=tk.X, padx=16, pady=4)
+
+        for pid, pname, pmult, _ in members:
+            row = tk.Frame(grp_frame)
+            row.pack(fill=tk.X, pady=2)
+            tk.Label(row, text=f"{pname}  ({pts_val} pont)",
+                     font=("Arial", 10), width=24, anchor="w").pack(side=tk.LEFT)
+            sec_var = tk.StringVar()
+            sec_vars[pid] = sec_var
+            tk.Entry(row, textvariable=sec_var, font=("Arial", 10),
+                     width=8, relief="solid", bd=1,
+                     justify="center").pack(side=tk.LEFT, padx=(6, 0))
+            tk.Label(row, text="mp.", font=("Arial", 9),
+                     fg="#777777").pack(side=tk.LEFT, padx=2)
+
+    result_holder = [None]
+
+    def on_ok():
+        sec_values = {}
+        for pid, sv in sec_vars.items():
+            val = sv.get().strip()
+            if val == "":
+                sec_values[pid] = None
+            else:
+                try:
+                    sec_values[pid] = int(val)
+                except ValueError:
+                    messagebox.showwarning("Hibás adat",
+                        "A másodlagos pontok csak egész számok lehetnek!",
+                        parent=dialog)
+                    return
+        result_holder[0] = sec_values
+        dialog.destroy()
+
+    def on_cancel():
+        dialog.destroy()
+
+    btn_row = tk.Frame(dialog)
+    btn_row.pack(pady=12)
+    tk.Button(btn_row, text="OK", font=("Arial", 11, "bold"),
+              bg="#4CAF50", fg="white", padx=18,
+              command=on_ok).pack(side=tk.LEFT, padx=6)
+    tk.Button(btn_row, text="Mégse", font=("Arial", 11, "bold"),
+              bg="#f44336", fg="white", padx=14,
+              command=on_cancel).pack(side=tk.LEFT, padx=6)
+
+    dialog.wait_window()
+
+    if result_holder[0] is None:
+        return None
+
+    sec_values = result_holder[0]
+
+    result = []
+    for pid, pname, pmult, pts in active_pts:
+        sec = sec_values.get(pid, None)
+        result.append((pid, pname, pmult, pts, sec))
+    return result
+
+
+def _assign_ranks(active_with_sec, reverse=True):
+    """
+    Helyezések kiosztása holtversennyel.
+    Input:  [(pid, pname, pmult, match_pts, sec_pts), ...]
+    Output: [(pid, pname, pmult, match_pts, sec_pts, rank), ...]
+    reverse=True  → több pont = jobb helyezés (max win_con)
+    reverse=False → kevesebb pont = jobb helyezés (min win_con)
+    A másodlagos pont törésben mindig több = jobb.
+    """
+    # Sec pont: ha reverse=True, nagyobb sec jobb (float('-inf') a None helyett)
+    #           ha reverse=False, kisebb fő jobb, de sec-nél még mindig nagyobb = jobb
+    # Megoldás: sec-t mindig ugyanolyan irányban kezeljük mint a fő pontot,
+    # kivéve hogy a sec törés iránya mindig "több = jobb" marad.
+    # Ezért sec-et külön kezeljük: fő pontot rendezzük reverse szerint,
+    # sec-et pedig mindig csökkenően (nagyobb sec = jobb).
+    def sort_key(x):
+        mp = x[3]
+        sec = x[4] if x[4] is not None else float('-inf')
+        # Ha reverse=False (min), a kisebb fő pont legyen elöl → negáljuk
+        return (-mp if not reverse else mp, sec)
+
+    sorted_list = sorted(active_with_sec, key=sort_key, reverse=True)
+
+    ranked = []
+    rank = 1
+    i = 0
+    while i < len(sorted_list):
+        pid, pname, pmult, mp, sec = sorted_list[i]
+        j = i + 1
+        while j < len(sorted_list):
+            _, _, _, mp2, sec2 = sorted_list[j]
+            if mp2 == mp and (sec2 == sec or (sec is None and sec2 is None)):
+                j += 1
+            else:
+                break
+        for k in range(i, j):
+            p = sorted_list[k]
+            ranked.append((p[0], p[1], p[2], p[3], p[4], rank))
+        rank += (j - i)
+        i = j
+
+    return ranked
+
+
+def _confirm_delete_match(match_id, game_name, mc_inner_parent, party_id):
+    """Megerősítés után törli a meccset és frissíti a parti képernyőt."""
+    confirm = messagebox.askyesno(
+        "Meccs törlése",
+        f"Biztosan törölni szeretnéd a(z) '{game_name}' meccset?\nAz összes eredménye is törlődik!"
+    )
+    if not confirm:
+        return
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM matches WHERE id = %s", (match_id,))
+        conn.commit()
+        messagebox.showinfo("Siker", f"'{game_name}' meccs törölve.")
+    except Error as e:
+        messagebox.showerror("Adatbázis hiba", f"Hiba történt: {e}")
+        return
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+    global party_detail_frame
+    if party_detail_frame:
+        party_detail_frame.destroy()
+        party_detail_frame = None
+    show_party_detail(party_id)
 
 
 def hide_party_detail():
@@ -532,7 +1066,6 @@ def hide_party_detail():
         party_detail_frame.destroy()
         party_detail_frame = None
 
-    # Dashboard újraépítése
     if dashboard_frame:
         dashboard_frame.destroy()
     root.title("BG Party Pointer - Főoldal")
@@ -583,7 +1116,6 @@ def handle_close_party(party_id, party_name):
         )
         conn.commit()
         messagebox.showinfo("Siker", f"'{party_name}' parti lezárva.")
-        # Frissítjük a képernyőt
         global party_detail_frame
         if party_detail_frame:
             party_detail_frame.destroy()

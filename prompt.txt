@@ -1,3 +1,5 @@
+-- Gemini: --
+
 1.
 meglévő adatbázis és python összekapcsolása
 
@@ -6,14 +8,20 @@ kérek írj egy seed.sql fájlt erre az adatbázisra.
 *boardgamesDB.sql*
 
 3.
-Írj egy lekérdezést, ami egy partit listáz ki. Írja ki az összes meccs resultot pontszámokkal, helyezésekkel, játékosnevekkel és játéknevekkel, és készíts egy python programot, ami listázza is ezeket.
+Írj egy lekérdezést, ami egy partit listáz ki. Írja ki az összes meccs resultot pontszámokkal, helyezésekkel, játékosnevekkel és játéknevekkel, 
+és készíts egy python programot, ami listázza is ezeket.
 
 4.
 ignoráld a kommenteket. Kérlek írj még felhasználókhoz több partit, partikhoz több meccset. Legalább x3 annyi adat legyen az adatbázisban. 
 
 5.
 Át akarom transzformálni a kódot konzolos alkalmazásról grafikusra.
-Ne egyszerre csináljuk, hanem kis lépeésekben. Először is csinálj egy grafikus felületet, amely egy bejelentkezés felület lesz. Felhasználónevet kérjen és jelszót. A két szövegdoboz alatt legyen 2 gomb: Bejelentkezés és regisztráció. Ha a bejelentkezésre nyom a felhasználó, és egyeznek a beírt adatok az egyik felhasználóéval az adatbázisban, írja ki hogy sikeres bejelentkezés. Ha nem egyezik, akkor írja ki hogy Helytelen felasználónév / jelszó. Ha a regisztációra nyom a felhasználó, és mind a kettő szöveg doboz ki van töltve és a felhasználónév még nem foglalt, mentse el az adatbázisba, és írja ki hogy Sikeres regisztráció!. Ha valamelyik szövegdoboz üres, írja ki hogy Adjon meg egy felhasználónevet, és jelszót. Ha a felhasználónév már foglalt, írja ki hogy A megadott felhasználónév már létezik. Ha a jelszó nem haladja meg a 8 karakter hosszúságot, írja ki hogy A jelszó min. 8 karakter hosszúságú legyen.
+Ne egyszerre csináljuk, hanem kis lépeésekben. Először is csinálj egy grafikus felületet, amely egy bejelentkezés felület lesz. Felhasználónevet kérjen és jelszót. 
+A két szövegdoboz alatt legyen 2 gomb: Bejelentkezés és regisztráció. Ha a bejelentkezésre nyom a felhasználó, és egyeznek a beírt adatok az egyik felhasználóéval 
+az adatbázisban, írja ki hogy sikeres bejelentkezés. Ha nem egyezik, akkor írja ki hogy Helytelen felasználónév / jelszó. Ha a regisztációra nyom a felhasználó, 
+és mind a kettő szöveg doboz ki van töltve és a felhasználónév még nem foglalt, mentse el az adatbázisba, és írja ki hogy Sikeres regisztráció!. Ha valamelyik szövegdoboz üres, 
+írja ki hogy Adjon meg egy felhasználónevet, és jelszót. Ha a felhasználónév már foglalt, írja ki hogy A megadott felhasználónév már létezik. 
+Ha a jelszó nem haladja meg a 8 karakter hosszúságot, írja ki hogy A jelszó min. 8 karakter hosszúságú legyen.
 kérlek írd le az egész kódot.
 
 6.
@@ -27,16 +35,24 @@ felhasználó és jelszó feliratok legyenek középre igazítva.
 
 9.
 szuper. A következő lépés egyszerű, de ha működik kielégítő lesz.
-Sikeres bejelentkezés esetén váltson át egy másik felületre, amely egyenlőre annyi lesz, hogy bal-felülre írja ki a felhasználó nevét, jobb felülre rakjon egy kijelentkezés gombot, amely visszavisz a bejelentkezés felületre.
+Sikeres bejelentkezés esetén váltson át egy másik felületre, amely egyenlőre annyi lesz, hogy bal-felülre írja ki a felhasználó nevét, 
+jobb felülre rakjon egy kijelentkezés gombot, amely visszavisz a bejelentkezés felületre.
 
  -- *váltás claude-ra* --
+-- Claude: --
 
 10.
 kiváló. A következő lépés nagyobb lesz: fent címként írja ki hogy Partik. Cím alatt jelenjen meg egy zöld "Új Parti" gomb. Erre a gombra rányomva jelenjen meg egy új felület. 
-Az új feület tetején "Új Parti készítése" cím legyen. Az oldal jobb felső sarkában legyen egy vissza-gomb amit megnyomva visszatér a felhasználó a főoldalra. Az oldal bal oldalán jelenjen meg egy szövegdoboz, amibe a játékos nevét kell beírnia a felhasználónak, illetve mellette mégegy szövegdoboz, amely 0-9-ig terjedő egész számot kaphat csak inputnak, alapértelmezeten 0. Így nézzen ki: Szorzó: x1.[input]. Alatta legyen egy plusz gomb, amit megnyomva lista szerűen megjelenik még egy ugyan ilyen játékos hozzáadási lehetőség, ezzel lejjebb ugrik a plusz gomb. szövegdoboz.
-A képernyő jobb oldalán legyen egy szövegdoboz, amelybe a parti nevét kell megadnia a felhasználónak, és alatta egy magasabb szövegdoboz, amiben a parti leírása adható meg.
+Az új feület tetején "Új Parti készítése" cím legyen. Az oldal jobb felső sarkában legyen egy vissza-gomb amit megnyomva visszatér a felhasználó a főoldalra. 
+Az oldal bal oldalán jelenjen meg egy szövegdoboz, amibe a játékos nevét kell beírnia a felhasználónak, illetve mellette mégegy szövegdoboz, 
+amely 0-9-ig terjedő egész számot kaphat csak inputnak, alapértelmezeten 0. Így nézzen ki: Szorzó: x1.[input]. Alatta legyen egy plusz gomb, 
+amit megnyomva lista szerűen megjelenik még egy ugyan ilyen játékos hozzáadási lehetőség, ezzel lejjebb ugrik a plusz gomb. szövegdoboz.
+A képernyő jobb oldalán legyen egy szövegdoboz, amelybe a parti nevét kell megadnia a felhasználónak, és alatta egy magasabb szövegdoboz, 
+amiben a parti leírása adható meg.
 Kicsivel ez alatt legyen egy gomb, amiel véglegesíti a parti beállításait.
-a játékosok neve lehet üresen hagyva, ezeket ignorálja a program, de legalább egyben kell hogy legyen tartalom. Ha a szorzóhoz nem ír semmi, 0 lesz az értéke. Nem lehet 2 játékosnak ugyan az a neve. Ebben az esetben a véglegesítésre rányova hibaüzenetként íraj hogy nem lehet 2 játékosnak ugyan az a neve. Ha nincs legalább egy játékosnak tartalom a név mezőben, írjon hibaüzenetet.
+a játékosok neve lehet üresen hagyva, ezeket ignorálja a program, de legalább egyben kell hogy legyen tartalom. Ha a szorzóhoz nem ír semmi, 
+0 lesz az értéke. Nem lehet 2 játékosnak ugyan az a neve. Ebben az esetben a véglegesítésre rányova hibaüzenetként íraj hogy nem lehet 2 játékosnak ugyan az a neve. 
+Ha nincs legalább egy játékosnak tartalom a név mezőben, írjon hibaüzenetet.
 A parti nevéhez is muszáj írnia valamit, különben hibaüzenetet kap. A leírás nem kötelező megadni, tehát üresen hagyható.
 Ezt mind mentse az adatbázisban, a felhasználó id-jéhez. A partit a parties táblában a felhasználó id-jével, a játékosokat a players táblában a parti id-jével.
 itt egy röktönzött vázlat amit én készítettem paint-ben erről a felületről (nyilván ez csak egy kézzel rajzolt vázlat, arányokon és design-on váltztathatsz): 
@@ -55,23 +71,78 @@ Miután bejelentkeztem és véglegesítettem egy partit, a felhasználó "None" 
 
 13.
 frissítsük az adatbázist:
-
 a parties táblában egy új rekord legyen: a "closed_date", ami default NULL.
-
-a matches táblában 2 új rekord: "date", ami a létrehozás dátuma és pontos ideje legyen (timestamp); súlyozás rekord (weighting) (0-1000-ig terjedő egész szám), később százalékként lesz kezelve, alapértelmezetten 100.
+a matches táblában 2 új rekord: "date", ami a létrehozás dátuma és pontos ideje legyen (timestamp); súlyozás rekord (weighting) (0-1000-ig terjedő egész szám), 
+később százalékként lesz kezelve, alapértelmezetten 100.
 
 14.
 A következő lépés is komplikált lesz:
 ha a felhasználó egy partinak a dedikált gombjára nyom, akkor egy új felület jelenjen meg.
-bal fent írja ki a parti nevét, jobbra mellette legyen egy piros kuka ikon (a vázlaton a kuka felírat helyére egy kuka ikon jelenjen meg), amely megnyomásával törlődjön a parti (legyen egy ablak a megerősítéshez). Ettől jobbra egy "parti lezárása" gomb legyen, amellyel lezáródik a parti, és nem lehet több meccset hozzáadni (új meccs készítése később lesz részletezve [lezárt partinál ne jelenjen meg az "Új meccs" gomb], ehhez is legyen megerősítés), ha a meccs lezárt, a gomb helyén a lezárás dátuma jelenjen meg így: "Lezárva: (ekkor)". Ettől jobbra egy "vissza" gomb, amely vissza visz a főoldalra. A felület bal oldalán egy bajnoki pont összegző (az összes meccsből összeadott) ranglista jelenjen meg. Sorokban jelenjenek meg a játékosok. A nevük, az összes pontuk, mellettük kicsiben a szorzójuk (ha nem x1.0), és a rankjuk jelenjen meg. A felület jobb oldalán a parti meccseinek eredményeit jelenítse meg. Felül legyen egy "Új meccs" gomb, amely egyenlőre semmit sem csinál, majd később lesz részletezve a funkciója. A gomb alatt jelenjenek meg a meccsek külün-külön, táblázatos formában. A táblázat így épül föl: Középen fent a meccs játékának a neve, bal oldalán a meccs létrehozási dátuma és ideje, jobb oldalán meg a súlyozása százalékban.
-Ez mind a táblázat felső sora. A második sora a fejléc, amely sorba a játékosok nevét, a rankhoz elért győzelmi pontjait, helyezését, és a rankkal elért bajnoki pontjait jelenítse meg (az ábra ebben a szempontból hibás, mert nem számolja bele a játékos szorzóját [laci x1.5-ös szorzója - itt is jelenjen meg a hozzáadott pont mellett kicsiben a szorzó (ha nem x1.0)]).  A mellékelt vázlat nem arányos, a méretek és design változhat.
+bal fent írja ki a parti nevét, jobbra mellette legyen egy piros kuka ikon (a vázlaton a kuka felírat helyére egy kuka ikon jelenjen meg), 
+amely megnyomásával törlődjön a parti (legyen egy ablak a megerősítéshez). Ettől jobbra egy "parti lezárása" gomb legyen, amellyel lezáródik a parti, 
+és nem lehet több meccset hozzáadni (új meccs készítése később lesz részletezve [lezárt partinál ne jelenjen meg az "Új meccs" gomb], ehhez is legyen megerősítés), 
+ha a meccs lezárt, a gomb helyén a lezárás dátuma jelenjen meg így: "Lezárva: (ekkor)". Ettől jobbra egy "vissza" gomb, amely vissza visz a főoldalra. 
+A felület bal oldalán egy bajnoki pont összegző (az összes meccsből összeadott) ranglista jelenjen meg. Sorokban jelenjenek meg a játékosok. 
+A nevük, az összes pontuk, mellettük kicsiben a szorzójuk (ha nem x1.0), és a rankjuk jelenjen meg. A felület jobb oldalán a parti meccseinek eredményeit jelenítse meg. 
+Felül legyen egy "Új meccs" gomb, amely egyenlőre semmit sem csinál, majd később lesz részletezve a funkciója. A gomb alatt jelenjenek meg a meccsek külün-külön, 
+táblázatos formában. A táblázat így épül föl: Középen fent a meccs játékának a neve, bal oldalán a meccs létrehozási dátuma és ideje, jobb oldalán meg a súlyozása százalékban.
+Ez mind a táblázat felső sora. A második sora a fejléc, amely sorba a játékosok nevét, a rankhoz elért győzelmi pontjait, helyezését, 
+és a rankkal elért bajnoki pontjait jelenítse meg (az ábra ebben a szempontból hibás, mert nem számolja bele a játékos szorzóját 
+[laci x1.5-ös szorzója - itt is jelenjen meg a hozzáadott pont mellett kicsiben a szorzó (ha nem x1.0)]).  A mellékelt vázlat nem arányos, a méretek és design változhat.
 
 15.
-A győzelmipontok és szorzók nem jelennek meg sem a ranglistán, sem a meccsek tábláiban. A bajnoki pontok meccseknél osztási képlete (játékosok száma n): {[(n - rank + 1) * 100] * (weithing / 100)} * (1 + multiplier  / 10). A ranglistán összeadja a játékosok összes győzelmi pontjait, amit a meccsekből nyertek, és ez alapján készít ranglistát. A meccs táblázatában a győzelmi pontok alapján ranksolorlja a játékosokat, ne a bajnoki pontok alapján, hiszen szorzó miatt lehet több mint az éppen a játékos előtte lévőnek.
+A győzelmipontok és szorzók nem jelennek meg sem a ranglistán, sem a meccsek tábláiban. A bajnoki pontok meccseknél osztási képlete (játékosok száma n): 
+{[(n - rank + 1) * 100] * (weithing / 100)} * (1 + multiplier  / 10). A ranglistán összeadja a játékosok összes győzelmi pontjait, amit a meccsekből nyertek, 
+és ez alapján készít ranglistát. A meccs táblázatában a győzelmi pontok alapján ranksolorlja a játékosokat, ne a bajnoki pontok alapján, 
+hiszen szorzó miatt lehet több mint az éppen a játékos előtte lévőnek.
 
 16.
-Jó lesz, csak van néhány kis, könnyen javítható hiba: A ranglistánál a győzelmi pontokat adtad össze, nem a bajnoki pontokat. A Ranglistánál a kis szorzó jelölőt inkább a rank után rakd (hogy ne csússzon el a rank, mégis így is egyértelmű lesz a felhasználónak). A meccs táblázatban a sorok töltsék ki a rendelkezésre álló helyet - pl. a név a záblázat bal oldalán, a bajnoki pontok pedig a jobb oldalán legyenek, sorkizárt módon, ill. a szorzó itt a bajnoki pont előtt legyen (csak akkor jelenjen meg, ha nem x1.0).
+Jó lesz, csak van néhány kis, könnyen javítható hiba: A ranglistánál a győzelmi pontokat adtad össze, nem a bajnoki pontokat. 
+A Ranglistánál a kis szorzó jelölőt inkább a rank után rakd (hogy ne csússzon el a rank, mégis így is egyértelmű lesz a felhasználónak). 
+A meccs táblázatban a sorok töltsék ki a rendelkezésre álló helyet - pl. a név a záblázat bal oldalán, a bajnoki pontok pedig a jobb oldalán legyenek, sorkizárt módon, 
+ill. a szorzó itt a bajnoki pont előtt legyen (csak akkor jelenjen meg, ha nem x1.0).
 
 17.
-majdnem jó. Nem egymás alatt vannak az adatok. a meccsek táblázatban a győzelmi pontok fixen a táblázat 1/3-ánál legyen, a helyezés pedig a 2/3-ánáll legyen. A táblázatban a szorzót inkább rakd a játékos neve mellé (után), és oldd meg hogy ez ne csúsztasson a soron.
+majdnem jó. Nem egymás alatt vannak az adatok. a meccsek táblázatban a győzelmi pontok fixen a táblázat 1/3-ánál legyen, a helyezés pedig a 2/3-ánáll legyen. 
+A táblázatban a szorzót inkább rakd a játékos neve mellé (után), és oldd meg hogy ez ne csúsztasson a soron.
 
+18.
+A parti felületen a ranglista alatt, ha van leírása a partinak, akkor csinálj egy dobozt, amely megjeleníti ezt.
+
+19.
+remek, most rakj egy piros "X"-et a meccsek jobb fölső sarkába, ami megnyomás és megerősítés után törli a meccs adatait. Ha parti le van zárva, tűnjön el az "x". vázlat: 
+*meccs_x.png*
+
+20.
+kérlek adj hozzá a "matches" táblához egy "win_con" rekordot, amely set típusú, 
+és 2 adatlehetősége van: "max" és "min". Ezzel dönti el a program majd a győzelmi pontok alapján a ranglistát.
+
+21.
+Most az új meccs mechanika jön. Ha megnyomja a felhasználó az "Új meccs" gombot, a gomb tűnjön el, és jelenjen meg egy meccs személyre szabási lehetőség, 
+közvetlen az első meccs helyén, a már kész meccsek emiatt csússzanak lejjebb az új táblázat helyével megfelelően. 
+Az új meccs táblázat hasonló felépítésű legyen mint a meccs táblázat. Az első sorában a címnek megadásának a lehetősége legyen, 
+ettől jobbra a súlyozásnak. Alapértelmezetten 100, lehessen tízesével lépkedni, csak egész szám inputot fogadjon el, és 10-el osztható legyen, 
+minimuma 0, maximuma 1000. A fejlécben a név, "játszott?" és győzelmi pontok jelenjenek meg. 
+Sorolja fel az összes játékost, és egy pipálható kör jelenjen meg a "játszott?" mezőn, ami alapértelmezetten be van pipálva. 
+A győzelmi pontok mezőnél egész számot írhat a felhasználó. A felsorolás alatt legyen egy "Győztes: " felírat, 
+mellette egy mező ami egy lenyitható választék listát mutat: 2 lehetőség, "legtöbb", és "legkevesebb", alapértelmezetten "legtöbb". 
+Ez alatt legyen két gomb egy sorban: Kész, és Mégse. A mégse gombra nyomva elveti a beírt adatokat, és eltűnik az Új meccs tábla, illetve visszakerül az Új meccs gomb. 
+Ha a kész gombra nyom a felhasználó, mentse el az adatbázisban az adatokat (a pontos idővel együtt), és szintén tűnjön el az új meccs tábla, 
+ill. kerüljön vissza az Új meccs gomb. Hibaüzenetek: Ha nincs írva cím ill. súlyozás, ha súlyozás nem szám, vagy nem osztható tízzel, 
+erről a hibaüzenetben finoman tájékoztassa a felhasználót, hogy az egyszerűség kedvéért 10-el osztható legyen. Hibaüzenet, ha egy játékos be van pipálva, 
+hogy játszott, és a felhasználó nem írt neki pontot, vagy nem egész szám a pont. 
+Ha legalább két játékosnap egyenlő a győzelmi/ büntető pontjuk felugró ablakban "Döntetlen törés" címmel. Sorolja fel a döntetlenre álló játékosok nevét, 
+pontjaikat, és legyen egy szövegdoboz, amelybe a másodlagos pontokat írhatja a felhasználó. ha két játékosnak ugyan az a main pontjuk, 
+és a másodlagos pontjuk is/ vagy nem írtak be semmit, akkor abszolút döntetlen lesz, és ugyan azt a helyezést kapják, így csúszik a helyezés, 
+és helyezés szempontjából egyel kevesebb játékos lesz (tehát 5 játékos esetén 1 döntetlennel a bajnoki pontokat úgy osztja ki, mintha 4 játékos lenne), 
+mivel többen ugyan azt a helyezést kapták, így kapott bajnoki pontjuk is egyezni fog (ha egyenlő szorzójuk van) 
+Itt viszont csak a legtöbb pontos a nyerő, erről is tájékoztassa a felhasználót. 
+Az adatbázisba mentés után készítsen egy új meccs táblát a többihez hasonló felépítéssel.
+Csak azokat a játékosokat sorolja fel, aki játszott. A játékosok helyezését a győzelmi/büntető pontok alapján, ill. 
+a win_con és ha kell másodlagos pont alapján határozza meg a program. Helyezés és szorzók alapján számolja ki a kapott bajnoki pontokat, és mentse el az adatbázisban 
+(Ha egy játékosnál nem volt bepipálva hogy játszott, teljesen ignorálja le). Kézzel rajzolt vázlat:
+*ujmeccs_vazlat.png*
+
+22.
+meg akarom oldani, hogy az új meccseket a lista tetejére rakja, illetve ha van egy játékosnak másodlagos győzelmi pontja, 
+akkor írja ki kicsiben zárójelben a győzelmi pont mellett jobbra. Ügyelj hogy emiatt ne csússzon a sor.

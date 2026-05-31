@@ -41,6 +41,7 @@ CREATE TABLE matches (
     game_name VARCHAR(100) NOT NULL,
     date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Létrehozás dátuma és ideje
     weighting SMALLINT UNSIGNED NOT NULL DEFAULT 100,  -- Súlyozás (0-1000), százalékként kezelve
+    win_con SET('max', 'min') NOT NULL DEFAULT 'max',  -- Győzelmi feltétel: max=több pont jobb, min=kevesebb pont jobb
     FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE CASCADE,
     CONSTRAINT chk_weighting CHECK (weighting BETWEEN 0 AND 1000)
 );
@@ -51,6 +52,7 @@ CREATE TABLE match_results (
     player_id INT NOT NULL,
     `rank` INT NOT NULL,
     match_points INT NOT NULL,
+    sec_match_points INT NULL DEFAULT NULL,        -- Másodlagos győzelmi pontok (opcionális)
     party_points INT NOT NULL,
     PRIMARY KEY (match_id, player_id),
     FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
